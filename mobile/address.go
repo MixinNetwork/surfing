@@ -1,10 +1,11 @@
 package mobile
 
 import (
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/btcsuite/btcutil/base58"
 )
+
+const MainNetworkId = "XIN"
 
 func LocalGenerateAddress(publicSpend, publicView string) (string, error) {
 	publicSpendKey, err := crypto.KeyFromString(string(publicSpend))
@@ -15,10 +16,10 @@ func LocalGenerateAddress(publicSpend, publicView string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data := append([]byte(common.MainNetworkId), publicSpendKey[:]...)
+	data := append([]byte(MainNetworkId), publicSpendKey[:]...)
 	data = append(data, publicViewKey[:]...)
 	checksum := crypto.NewHash(data)
 	data = append(publicSpendKey[:], publicViewKey[:]...)
 	data = append(data, checksum[:4]...)
-	return common.MainNetworkId + base58.Encode(data), nil
+	return MainNetworkId + base58.Encode(data), nil
 }
