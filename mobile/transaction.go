@@ -156,6 +156,100 @@ func SignTransaction(account common.Address, raw signerInput) (*common.SignedTra
 	return signed, nil
 }
 
+func createTx(raw signerInput) (*common.SignedTransaction, error) {
+	tx := common.NewTransaction(raw.Asset)
+	for _, in := range raw.Inputs {
+		tx.AddInput(in.Hash, in.Index)
+	}
+
+	for _, out := range raw.Outputs {
+		if out.Type != common.OutputTypeScript {
+			return nil, fmt.Errorf("invalid output type %d", out.Type)
+		}
+
+		if out.Accounts != nil {
+			tx.AddRandomScriptOutput(out.Accounts, out.Script, out.Amount)
+		}
+		if out.Keys != nil {
+			tx.Outputs = append(tx.Outputs, &common.Output{
+				Type:   common.OutputTypeScript,
+				Amount: out.Amount,
+				Keys:   out.Keys,
+				Script: common.NewThresholdScript(1),
+				Mask:   out.Mask,
+			})
+		}
+	}
+
+	extra, err := hex.DecodeString(raw.Extra)
+	if err != nil {
+		return nil, err
+	}
+	tx.Extra = extra
+
+	signed := &common.SignedTransaction{Transaction: *tx}
+	for i := range signed.Inputs {
+		// err := signed.SignInput(raw, i, []*common.Address{&account})
+		// if err != nil {
+		// 	return nil, err
+		// }
+		fmt.Println(i)
+	}
+	return signed, nil
+}
+
+func signInput(signed *common.SignedTransaction, reader common.UTXOKeysReader, index int, accounts []*common.Address) error {
+	msg := signed.AsLatestVersion().PayloadMarshal()
+
+	if len(accounts) == 0 {
+		return nil
+	}
+	if index >= len(signed.Inputs) {
+		return fmt.Errorf("invalid input index %d/%d", index, len(signed.Inputs))
+	}
+	in := signed.Inputs[index]
+	utxo, err := reader.ReadUTXOKeys(in.Hash, in.Index)
+	if err != nil {
+		return err
+	}
+	if utxo == nil {
+		return fmt.Errorf("input not found %s:%d", in.Hash.String(), in.Index)
+	}
+
+	keysFilter := make(map[string]uint16)
+	for i, k := range utxo.Keys {
+		keysFilter[k.String()] = uint16(i)
+	}
+
+	sigs := make(map[uint16]*crypto.Signature)
+	for _, acc := range accounts {
+		priv := crypto.DeriveGhostPrivateKey(&utxo.Mask, &acc.PrivateViewKey, &acc.PrivateSpendKey, uint64(in.Index))
+		i, found := keysFilter[priv.Public().String()]
+		if !found {
+			return fmt.Errorf("invalid key for the input %s", acc.String())
+		}
+		sig := priv.Sign(msg)
+		sigs[i] = &sig
+	}
+	signed.SignaturesMap = append(signed.SignaturesMap, sigs)
+	return nil
+}
+
+func CreateTransaction(node string, rawStr string) (string, error) {
+	var raw signerInput
+	err := json.Unmarshal([]byte(rawStr), &raw)
+	if err != nil {
+		return "", err
+	}
+	raw.Node = node
+	tx, err := createTx(raw)
+	if err != nil {
+		return "", err
+	}
+	d := &common.VersionedTransaction{SignedTransaction: *tx}
+	return hex.EncodeToString(d.Marshal()), nil
+}
+
 func SignTransactionRaw(node string, account common.Address, rawStr string) (string, error) {
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
