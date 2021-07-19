@@ -156,7 +156,7 @@ func SignTransaction(account common.Address, raw signerInput) (*common.SignedTra
 	return signed, nil
 }
 
-func createTx(raw signerInput) (*common.SignedTransaction, error) {
+func createTx(raw signerInput, account common.Address) (*common.SignedTransaction, error) {
 	tx := common.NewTransaction(raw.Asset)
 	for _, in := range raw.Inputs {
 		tx.AddInput(in.Hash, in.Index)
@@ -189,60 +189,47 @@ func createTx(raw signerInput) (*common.SignedTransaction, error) {
 
 	signed := &common.SignedTransaction{Transaction: *tx}
 	for i := range signed.Inputs {
-		// err := signed.SignInput(raw, i, []*common.Address{&account})
-		// if err != nil {
-		// 	return nil, err
-		// }
-		fmt.Println(i)
+		signed, err = signInputWithAccount(signed, raw, i, account)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return signed, nil
 }
 
-func signInput(signed *common.SignedTransaction, reader common.UTXOKeysReader, index int, accounts []*common.Address) error {
+func signInputWithAccount(signed *common.SignedTransaction, reader common.UTXOKeysReader, index int, acc common.Address) (*common.SignedTransaction, error) {
 	msg := signed.AsLatestVersion().PayloadMarshal()
 
-	if len(accounts) == 0 {
-		return nil
-	}
 	if index >= len(signed.Inputs) {
-		return fmt.Errorf("invalid input index %d/%d", index, len(signed.Inputs))
+		return nil, fmt.Errorf("invalid input index %d/%d", index, len(signed.Inputs))
 	}
 	in := signed.Inputs[index]
 	utxo, err := reader.ReadUTXOKeys(in.Hash, in.Index)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if utxo == nil {
-		return fmt.Errorf("input not found %s:%d", in.Hash.String(), in.Index)
+		return nil, fmt.Errorf("input not found %s:%d", in.Hash.String(), in.Index)
 	}
-
-	keysFilter := make(map[string]uint16)
-	for i, k := range utxo.Keys {
-		keysFilter[k.String()] = uint16(i)
+	if len(utxo.Keys) != 1 {
+		return nil, fmt.Errorf("utxo keys found %d", len(utxo.Keys))
 	}
-
 	sigs := make(map[uint16]*crypto.Signature)
-	for _, acc := range accounts {
-		priv := crypto.DeriveGhostPrivateKey(&utxo.Mask, &acc.PrivateViewKey, &acc.PrivateSpendKey, uint64(in.Index))
-		i, found := keysFilter[priv.Public().String()]
-		if !found {
-			return fmt.Errorf("invalid key for the input %s", acc.String())
-		}
-		sig := priv.Sign(msg)
-		sigs[i] = &sig
-	}
+	priv := crypto.DeriveGhostPrivateKey(&utxo.Mask, &acc.PrivateViewKey, &acc.PrivateSpendKey, uint64(in.Index))
+	sig := priv.Sign(msg)
+	sigs[0] = &sig
 	signed.SignaturesMap = append(signed.SignaturesMap, sigs)
-	return nil
+	return signed, nil
 }
 
-func CreateTransaction(node string, rawStr string) (string, error) {
+func CreateTransactionWithAccount(node string, account common.Address, rawStr string) (string, error) {
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
 	if err != nil {
 		return "", err
 	}
 	raw.Node = node
-	tx, err := createTx(raw)
+	tx, err := createTx(raw, account)
 	if err != nil {
 		return "", err
 	}
@@ -265,17 +252,17 @@ func SignTransactionRaw(node string, account common.Address, rawStr string) (str
 	return hex.EncodeToString(d.Marshal()), nil
 }
 
-func SentRawTransaction(node string, raw string) error {
+func SentRawTransaction(node string, raw string) (string, error) {
 	data, err := callRPC(node, "sendrawtransaction", []interface{}{raw})
 	if err != nil {
-		return err
+		return "", err
 	}
 	var resp struct {
 		Hash string `json:"hash"`
 	}
 	err = json.Unmarshal(data, &resp)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return resp.Hash, nil
 }
