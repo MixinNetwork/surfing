@@ -34,6 +34,23 @@ func TestDeriveGhostPrivateKey(t *testing.T) {
 	assert.Equal("8618e47480415ea548a8c7b1d0291d8edacbdc787762b164a89a60131c7d780a", priv.String())
 }
 
+func TestCreateTransaction(t *testing.T) {
+	hash := "a22669508f2674edc6c4e6c76c7b6614704fdcc6e9814f76753422156bbc0522"
+	index := 0
+
+	outputKeys := "a855dab1e7a22345b24e47d1d8deb44edd5515ed3ba1b5766438f0bc562796b3"
+	outputMask := "64957a17c09ea480150c68fad73bc7c54601c7905428918346d66aa8cf8538b5"
+
+	raw := fmt.Sprintf(`{"version":2,"asset": "b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8","inputs":[{"hash":"%s","index":%d}],"outputs":[{"type":0,"amount":"100","script":"fffe01","keys":["%s"], "mask": "%s"}]}`, hash, index, outputKeys, outputMask)
+
+	tx, err := CreateTransaction(nodes[rand.Intn(len(nodes))], raw)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(tx)
+}
+
 func TestCreateTx(t *testing.T) {
 	hash := "a22669508f2674edc6c4e6c76c7b6614704fdcc6e9814f76753422156bbc0522"
 	index := 0

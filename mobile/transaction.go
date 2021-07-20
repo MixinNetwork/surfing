@@ -156,7 +156,40 @@ func SignTransaction(account common.Address, raw signerInput) (*common.SignedTra
 	return signed, nil
 }
 
-func createTx(raw signerInput, account common.Address) (*common.SignedTransaction, error) {
+func Sign(msg []byte, privateViewKey, privateSpendKey, mask *crypto.Key, index uint64) crypto.Signature {
+	priv := crypto.DeriveGhostPrivateKey(mask, privateViewKey, privateSpendKey, index)
+	sig := priv.Sign(msg)
+	return sig
+}
+
+/*
+func signInput(signed *common.SignedTransaction, reader common.UTXOKeysReader, index int) (*common.SignedTransaction, error) {
+	msg := signed.AsLatestVersion().PayloadMarshal()
+
+	if index >= len(signed.Inputs) {
+		return nil, fmt.Errorf("invalid input index %d/%d", index, len(signed.Inputs))
+	}
+	in := signed.Inputs[index]
+	utxo, err := reader.ReadUTXOKeys(in.Hash, in.Index)
+	if err != nil {
+		return nil, err
+	}
+	if utxo == nil {
+		return nil, fmt.Errorf("input not found %s:%d", in.Hash.String(), in.Index)
+	}
+	if len(utxo.Keys) != 1 {
+		return nil, fmt.Errorf("utxo keys found %d", len(utxo.Keys))
+	}
+	sigs := make(map[uint16]*crypto.Signature)
+	fmt.Println(msg)
+	priv := crypto.DeriveGhostPrivateKey(&utxo.Mask, &acc.PrivateViewKey, &acc.PrivateSpendKey, uint64(in.Index))
+	sig := priv.Sign(msg)
+	sigs[0] = &sig
+	signed.SignaturesMap = append(signed.SignaturesMap, sigs)
+	return signed, nil
+}
+*/
+func createTx(raw signerInput) (string, error) {
 	tx := common.NewTransaction(raw.Asset)
 	for _, in := range raw.Inputs {
 		tx.AddInput(in.Hash, in.Index)
@@ -164,7 +197,7 @@ func createTx(raw signerInput, account common.Address) (*common.SignedTransactio
 
 	for _, out := range raw.Outputs {
 		if out.Type != common.OutputTypeScript {
-			return nil, fmt.Errorf("invalid output type %d", out.Type)
+			return "", fmt.Errorf("invalid output type %d", out.Type)
 		}
 
 		if out.Accounts != nil {
@@ -183,58 +216,31 @@ func createTx(raw signerInput, account common.Address) (*common.SignedTransactio
 
 	extra, err := hex.DecodeString(raw.Extra)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	tx.Extra = extra
 
 	signed := &common.SignedTransaction{Transaction: *tx}
-	for i := range signed.Inputs {
-		signed, err = signInputWithAccount(signed, raw, i, account)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return signed, nil
+	payload := hex.EncodeToString(signed.AsLatestVersion().PayloadMarshal())
+	// sigs := make(map[uint16]*crypto.Signature)
+	// signed.SignaturesMap = append(signed.SignaturesMap, sigs)
+	return payload, nil
 }
 
-func signInputWithAccount(signed *common.SignedTransaction, reader common.UTXOKeysReader, index int, acc common.Address) (*common.SignedTransaction, error) {
-	msg := signed.AsLatestVersion().PayloadMarshal()
-
-	if index >= len(signed.Inputs) {
-		return nil, fmt.Errorf("invalid input index %d/%d", index, len(signed.Inputs))
-	}
-	in := signed.Inputs[index]
-	utxo, err := reader.ReadUTXOKeys(in.Hash, in.Index)
-	if err != nil {
-		return nil, err
-	}
-	if utxo == nil {
-		return nil, fmt.Errorf("input not found %s:%d", in.Hash.String(), in.Index)
-	}
-	if len(utxo.Keys) != 1 {
-		return nil, fmt.Errorf("utxo keys found %d", len(utxo.Keys))
-	}
-	sigs := make(map[uint16]*crypto.Signature)
-	priv := crypto.DeriveGhostPrivateKey(&utxo.Mask, &acc.PrivateViewKey, &acc.PrivateSpendKey, uint64(in.Index))
-	sig := priv.Sign(msg)
-	sigs[0] = &sig
-	signed.SignaturesMap = append(signed.SignaturesMap, sigs)
-	return signed, nil
-}
-
-func CreateTransactionWithAccount(node string, account common.Address, rawStr string) (string, error) {
+func CreateTransaction(node string, rawStr string) (string, error) {
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
 	if err != nil {
 		return "", err
 	}
 	raw.Node = node
-	tx, err := createTx(raw, account)
+	tx, err := createTx(raw)
 	if err != nil {
 		return "", err
 	}
-	d := &common.VersionedTransaction{SignedTransaction: *tx}
-	return hex.EncodeToString(d.Marshal()), nil
+	return tx, nil
+	// d := &common.VersionedTransaction{SignedTransaction: *tx}
+	// return hex.EncodeToString(d.Marshal()), nil
 }
 
 func SignTransactionRaw(node string, account common.Address, rawStr string) (string, error) {
