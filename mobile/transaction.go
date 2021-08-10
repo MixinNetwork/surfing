@@ -162,7 +162,7 @@ func Sign(msg []byte, privateViewKey, privateSpendKey, mask *crypto.Key, index u
 	return sig
 }
 
-func createTx(raw signerInput) (string, error) {
+func createTx(raw signerInput) (*common.SignedTransaction, error) {
 	tx := common.NewTransaction(raw.Asset)
 	for _, in := range raw.Inputs {
 		tx.AddInput(in.Hash, in.Index)
@@ -170,7 +170,7 @@ func createTx(raw signerInput) (string, error) {
 
 	for _, out := range raw.Outputs {
 		if out.Type != common.OutputTypeScript {
-			return "", fmt.Errorf("invalid output type %d", out.Type)
+			return nil, fmt.Errorf("invalid output type %d", out.Type)
 		}
 
 		if out.Accounts != nil {
@@ -189,17 +189,14 @@ func createTx(raw signerInput) (string, error) {
 
 	extra, err := hex.DecodeString(raw.Extra)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	tx.Extra = extra
-
 	signed := &common.SignedTransaction{Transaction: *tx}
-	payload := hex.EncodeToString(signed.AsLatestVersion().PayloadMarshal())
-	// sigs := make(map[uint16]*crypto.Signature)
-	// signed.SignaturesMap = append(signed.SignaturesMap, sigs)
-	return payload, nil
+	return signed, nil
 }
 
+// create for sign transaction
 func CreateTransaction(node string, rawStr string) (string, error) {
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
@@ -211,9 +208,35 @@ func CreateTransaction(node string, rawStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tx, nil
-	// d := &common.VersionedTransaction{SignedTransaction: *tx}
-	// return hex.EncodeToString(d.Marshal()), nil
+	return hex.EncodeToString(tx.AsLatestVersion().PayloadMarshal()), nil
+}
+
+func CreateTransactionWithSignature(node string, rawStr, signature string) (string, error) {
+	var raw signerInput
+	err := json.Unmarshal([]byte(rawStr), &raw)
+	if err != nil {
+		return "", err
+	}
+	raw.Node = node
+	tx, err := createTx(raw)
+	if err != nil {
+		return "", err
+	}
+
+	d := &common.VersionedTransaction{SignedTransaction: *tx}
+	sigs := make(map[uint16]*crypto.Signature)
+	sig, err := hex.DecodeString(signature)
+	if err != nil {
+		return "", err
+	}
+	if len(sig) != 64 {
+		return "", fmt.Errorf("Bad sign len %d", len(sig))
+	}
+	s := crypto.Signature{}
+	copy(s[:], sig)
+	sigs[0] = &s
+	d.SignaturesMap = append(d.SignaturesMap, sigs)
+	return hex.EncodeToString(d.Marshal()), nil
 }
 
 func SignTransactionRaw(node string, account common.Address, rawStr string) (string, error) {
