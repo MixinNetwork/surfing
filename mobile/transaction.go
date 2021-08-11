@@ -196,6 +196,10 @@ func createTx(raw signerInput) (*common.SignedTransaction, error) {
 	return signed, nil
 }
 
+func MainnetAssetId(assetId string) string {
+	return crypto.NewHash([]byte(assetId)).String()
+}
+
 // create for sign transaction
 func CreateTransaction(node string, rawStr string) (string, error) {
 	var raw signerInput
