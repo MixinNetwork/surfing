@@ -1,8 +1,11 @@
 package mobile
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,4 +22,8 @@ func TestAddress(t *testing.T) {
 	address, err := LocalGenerateAddress(publicSpendKey, publicViewKey)
 	assert.Nil(err)
 	assert.Equal(address, addr)
+
+	fmt.Println(common.XINAssetId)
+	CNBAssetId := crypto.NewHash([]byte("965e5c6e-434c-3fa9-b780-c50f43cd955c"))
+	fmt.Println(CNBAssetId)
 }
