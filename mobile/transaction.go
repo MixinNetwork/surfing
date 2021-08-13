@@ -158,8 +158,8 @@ func SignTransaction(account common.Address, raw signerInput) (*common.SignedTra
 
 func Sign(msg []byte, privateViewKey, privateSpendKey, mask *crypto.Key, index uint64) crypto.Signature {
 	priv := crypto.DeriveGhostPrivateKey(mask, privateViewKey, privateSpendKey, index)
-	sig := priv.Sign(msg)
-	return sig
+	fmt.Println("one time priv key: ", priv.String())
+	return priv.Sign(msg)
 }
 
 func createTx(raw signerInput) (*common.SignedTransaction, error) {
