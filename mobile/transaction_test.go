@@ -51,8 +51,9 @@ func TestOfflineTransaction(t *testing.T) {
 	index := 0
 	signature := Sign(txBytes, &view, &spend, &mask, uint64(index))
 	fmt.Println(signature)
-
-	// CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, sig)
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature.String())
+	assert.Nil(err)
+	fmt.Println(result)
 }
 
 func TestDeriveGhostPrivateKey(t *testing.T) {
