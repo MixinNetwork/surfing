@@ -216,7 +216,7 @@ func CreateTransaction(node string, rawStr string) (string, error) {
 	return hex.EncodeToString(tx.AsLatestVersion().PayloadMarshal()), nil
 }
 
-func CreateTransactionWithSignature(node string, rawStr, signature string) (string, error) {
+func CreateTransactionWithSignature(node string, rawStr string, signatures []string) (string, error) {
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
 	if err != nil {
@@ -230,16 +230,18 @@ func CreateTransactionWithSignature(node string, rawStr, signature string) (stri
 
 	d := &common.VersionedTransaction{SignedTransaction: *tx}
 	sigs := make(map[uint16]*crypto.Signature)
-	sig, err := hex.DecodeString(signature)
-	if err != nil {
-		return "", err
+	for i, s := range signatures {
+		sig, err := hex.DecodeString(s)
+		if err != nil {
+			return "", err
+		}
+		if len(sig) != 64 {
+			return "", fmt.Errorf("Bad sign len %d", len(sig))
+		}
+		s := crypto.Signature{}
+		copy(s[:], sig)
+		sigs[uint16(i)] = &s
 	}
-	if len(sig) != 64 {
-		return "", fmt.Errorf("Bad sign len %d", len(sig))
-	}
-	s := crypto.Signature{}
-	copy(s[:], sig)
-	sigs[0] = &s
 	d.SignaturesMap = append(d.SignaturesMap, sigs)
 	return hex.EncodeToString(d.Marshal()), nil
 }

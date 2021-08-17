@@ -22,7 +22,47 @@ func init() {
 	}
 }
 
-func TestOfflineTransaction(t *testing.T) {
+func TestOffline2Transaction(t *testing.T) {
+	assert := assert.New(t)
+
+	spend, err := crypto.KeyFromString("1FEC3DAAE66C356F539DF4F779F49A9C0C919B962A5152D7D5BD418E016A3501")
+	assert.Nil(err)
+	fmt.Println("spend public key", spend.Public())
+	view, err := crypto.KeyFromString("EDC8B7D77A4510872AEF0C8249D851A4217E006406E63C331E04137FCAD9F903")
+	assert.Nil(err)
+	fmt.Println("view public key", spend.Public())
+	/*
+		./mixin -n node-42.f1ex.io:8239 getutxo -x 9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb
+		{"amount":"100.00000000","hash":"9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb","index":0,"keys":["8245a19533b5a9cdf7a67d88e74b863150832d4c804ca1abf183d3c3ea7c6598"],"mask":"51e821847480618b767e92bd54b07cee4cf72b9c335f404ac8356c14898cff1b","script":"fffe01","type":0}
+	*/
+	extra := hex.EncodeToString([]byte("to address xxxx:xx"))
+	//68656c6c6f
+	hash := "fa0554ec656f9a32c1540870b9769e3c5e8637b8f6cf72a91b73cd0a3cc9b8bc"
+
+	address, err := common.NewAddressFromString("XINAWFi6YShoUsRE4KWffFZqRjQUtRjL2fKJLcRnRWUzg63pT2ASveUXo9BJwcTECfkCNS1R1JFNVRT73f7XRkteedC9jWPJ")
+	assert.Nil(err)
+	raw := fmt.Sprintf(`{"asset":"b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8","extra":"%s","inputs":[{"hash":"%s","index":0}],"outputs":[{"amount":"1.1","keys":["a33cedbbd771a0f7d92e9a911c7ae5cffb24606b27a4aeef646bb1eb25bbb14a"],"mask":"7a655676a46daa3ac4d5c3708856380e8771bbb73b67fccbcddc9ea0fcdc67c1","script":"fffe01","type":0}, {"amount":"0.9", "accounts": ["%s"],"script":"fffe01","type":0}]}`, extra, hash, address)
+	fmt.Println(raw)
+	tx, err := CreateTransaction(nodes[rand.Intn(len(nodes))], raw)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(tx)
+	txBytes, err := hex.DecodeString(tx)
+	assert.Nil(err)
+
+	mask, err := crypto.KeyFromString("cde8eac6a28bde1c9b020ade8f86850def27df8cee426a6253f969f4367bd90f")
+	assert.Nil(err)
+	index := 0
+	signature := Sign(txBytes, &view, &spend, &mask, uint64(index))
+	fmt.Println("Signature: ", signature)
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, []string{signature.String()})
+	assert.Nil(err)
+	fmt.Println(result)
+}
+
+func TestOffline1Transaction(t *testing.T) {
 	assert := assert.New(t)
 
 	spend, err := crypto.KeyFromString("e612190f96fc058a52f84cabeff5eb6bbb436139f5c6920460b084eb9517210b")
@@ -57,7 +97,7 @@ func TestOfflineTransaction(t *testing.T) {
 	a, err := crypto.KeyFromString("f5716468bf003ae492c83be30c17095649e9e7eab057425384426d085791c60b")
 	assert.Nil(err)
 	fmt.Println(a.Public())
-	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature.String())
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, []string{signature.String()})
 	assert.Nil(err)
 	fmt.Println(result)
 }
