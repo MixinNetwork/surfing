@@ -37,14 +37,11 @@ func TestOfflineTransaction(t *testing.T) {
 		{"amount":"100.00000000","hash":"9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb","index":0,"keys":["8245a19533b5a9cdf7a67d88e74b863150832d4c804ca1abf183d3c3ea7c6598"],"mask":"51e821847480618b767e92bd54b07cee4cf72b9c335f404ac8356c14898cff1b","script":"fffe01","type":0}
 	*/
 	extra := hex.EncodeToString([]byte("hello"))
-	fmt.Println(extra)
 	//68656c6c6f
-	raw := `{"asset":"b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8","extra":"68656c6c6f","inputs":[{"hash":"9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb","index":0}],"outputs":[{"amount":"100.0","keys":["73755cc77391e5ba98a01f53dee962cd078b47da29ab6933041311fbd96213e6"],"mask":"6442dbb1b7b1335618f195b66425bb0de218167fd04d3f34251189833d99b777","script":"fffe01","type":0}]}`
+	raw := fmt.Sprintf(`{"asset":"b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8","extra":%s,"inputs":[{"hash":"9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb","index":0}],"outputs":[{"amount":"100.0","keys":["73755cc77391e5ba98a01f53dee962cd078b47da29ab6933041311fbd96213e6"],"mask":"6442dbb1b7b1335618f195b66425bb0de218167fd04d3f34251189833d99b777","script":"fffe01","type":0}]}`, extra)
 	fmt.Println(raw)
-
 	tx, err := CreateTransaction(nodes[rand.Intn(len(nodes))], raw)
 	if err != nil {
-		fmt.Println("---fuck")
 		fmt.Println(err)
 		return
 	}
