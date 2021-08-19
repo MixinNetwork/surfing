@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MixinNetwork/mixin/common"
@@ -216,7 +217,8 @@ func CreateTransaction(node string, rawStr string) (string, error) {
 	return hex.EncodeToString(tx.AsLatestVersion().PayloadMarshal()), nil
 }
 
-func CreateTransactionWithSignature(node string, rawStr string, signatures []string) (string, error) {
+func CreateTransactionWithSignature(node string, rawStr string, sig string) (string, error) {
+	signatures := strings.Split(sig, ",")
 	var raw signerInput
 	err := json.Unmarshal([]byte(rawStr), &raw)
 	if err != nil {

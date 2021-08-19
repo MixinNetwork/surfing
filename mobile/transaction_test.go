@@ -57,7 +57,7 @@ func TestOffline2Transaction(t *testing.T) {
 	index := 0
 	signature := Sign(txBytes, &view, &spend, &mask, uint64(index))
 	fmt.Println("Signature: ", signature)
-	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, []string{signature.String()})
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature.String())
 	assert.Nil(err)
 	fmt.Println(result)
 }
@@ -97,7 +97,7 @@ func TestOffline1Transaction(t *testing.T) {
 	a, err := crypto.KeyFromString("f5716468bf003ae492c83be30c17095649e9e7eab057425384426d085791c60b")
 	assert.Nil(err)
 	fmt.Println(a.Public())
-	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, []string{signature.String()})
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature.String())
 	assert.Nil(err)
 	fmt.Println(result)
 }
