@@ -31,33 +31,46 @@ func TestOffline2Transaction(t *testing.T) {
 	view, err := crypto.KeyFromString("EDC8B7D77A4510872AEF0C8249D851A4217E006406E63C331E04137FCAD9F903")
 	assert.Nil(err)
 	fmt.Println("view public key", spend.Public())
+
+	addr := &common.Address{
+		PrivateSpendKey: spend,
+		PrivateViewKey:  view,
+		PublicSpendKey:  spend.Public(),
+		PublicViewKey:   view.Public(),
+	}
+	address, err := common.NewAddressFromString("XINAWFi6YShoUsRE4KWffFZqRjQUtRjL2fKJLcRnRWUzg63pT2ASveUXo9BJwcTECfkCNS1R1JFNVRT73f7XRkteedC9jWPJ")
+	assert.Nil(err)
+	assert.Equal(addr.String(), address.String())
+
 	/*
 		./mixin -n node-42.f1ex.io:8239 getutxo -x 9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb
-		{"amount":"100.00000000","hash":"9600260ff99222012bd6fe4ee226e83ec42bafcb887e3dec64ff8d917abe4ecb","index":0,"keys":["8245a19533b5a9cdf7a67d88e74b863150832d4c804ca1abf183d3c3ea7c6598"],"mask":"51e821847480618b767e92bd54b07cee4cf72b9c335f404ac8356c14898cff1b","script":"fffe01","type":0}
+		{"amount":"100.00000000","hash":"89f0785ec04815218cef99c41bffae09e65d8c366bd7c603ea6e6164c46df236","index":0,"keys":["9b8eb6677a33805a876a9b2eae212455d9cb0ef2f23789169bfa5dec99942eb6"],"mask":"654c75f4a3609a2201dfda513cb970f54500992f8c48535f80a1445312ecf946","script":"fffe01","type":0}
+		{"amount":"100.00000000","hash":"9b8e052f458ec8f81bf141f6cfa5edc291e917a4a1f25635b93f668e5948178d","index":0,"keys":["0eaa6a7eda65451880386b20130e1e9ebdfe7e3fb2661e803e4e2ab8b2d30de4"],"mask":"6a2934140f9f22929d37bed742610a057c278797bbe3e0ae9b6fc7e319a7f539","script":"fffe01","type":0}
 	*/
 	extra := hex.EncodeToString([]byte("to address xxxx:xx"))
 	//68656c6c6f
-	hash := "fa0554ec656f9a32c1540870b9769e3c5e8637b8f6cf72a91b73cd0a3cc9b8bc"
-
-	address, err := common.NewAddressFromString("XINAWFi6YShoUsRE4KWffFZqRjQUtRjL2fKJLcRnRWUzg63pT2ASveUXo9BJwcTECfkCNS1R1JFNVRT73f7XRkteedC9jWPJ")
-	assert.Nil(err)
-	raw := fmt.Sprintf(`{"asset":"b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8","extra":"%s","inputs":[{"hash":"%s","index":0}],"outputs":[{"amount":"1.1","keys":["a33cedbbd771a0f7d92e9a911c7ae5cffb24606b27a4aeef646bb1eb25bbb14a"],"mask":"7a655676a46daa3ac4d5c3708856380e8771bbb73b67fccbcddc9ea0fcdc67c1","script":"fffe01","type":0}, {"amount":"0.9", "accounts": ["%s"],"script":"fffe01","type":0}]}`, extra, hash, address)
+	raw := fmt.Sprintf(`{"asset":"b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8",
+		"extra":"%s",
+		"inputs":[{"hash":"89f0785ec04815218cef99c41bffae09e65d8c366bd7c603ea6e6164c46df236","index":0}, 
+			{"hash":"9b8e052f458ec8f81bf141f6cfa5edc291e917a4a1f25635b93f668e5948178d","index":0}],
+		"outputs":[{"amount":"200","keys":["326ef472c94be57692c6a3e80e8370e37ee58eecea0d3b7304ab5192a44f5892"],"mask":"b249c11c090c002bcfdae157ac5163ce44cb5e21c59ac7a8a7d91c81761ec662","script":"fffe01","type":0}]}`, extra)
 	fmt.Println(raw)
 	tx, err := CreateTransaction(nodes[rand.Intn(len(nodes))], raw)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	assert.Nil(err)
 	fmt.Println(tx)
 	txBytes, err := hex.DecodeString(tx)
 	assert.Nil(err)
 
-	mask, err := crypto.KeyFromString("cde8eac6a28bde1c9b020ade8f86850def27df8cee426a6253f969f4367bd90f")
+	mask1, err := crypto.KeyFromString("654c75f4a3609a2201dfda513cb970f54500992f8c48535f80a1445312ecf946")
 	assert.Nil(err)
 	index := 0
-	signature := Sign(txBytes, &view, &spend, &mask, uint64(index))
-	fmt.Println("Signature: ", signature)
-	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature.String())
+	mask2, err := crypto.KeyFromString("6a2934140f9f22929d37bed742610a057c278797bbe3e0ae9b6fc7e319a7f539")
+	assert.Nil(err)
+	signature1 := Sign(txBytes, &view, &spend, &mask1, uint64(index))
+	fmt.Println("Signature1: ", signature1)
+	signature2 := Sign(txBytes, &view, &spend, &mask2, uint64(index))
+	fmt.Println("Signature2: ", signature2)
+	result, err := CreateTransactionWithSignature(nodes[rand.Intn(len(nodes))], raw, signature1.String()+","+signature2.String())
 	assert.Nil(err)
 	fmt.Println(result)
 }

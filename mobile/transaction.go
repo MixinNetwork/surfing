@@ -231,20 +231,20 @@ func CreateTransactionWithSignature(node string, rawStr string, sig string) (str
 	}
 
 	d := &common.VersionedTransaction{SignedTransaction: *tx}
-	sigs := make(map[uint16]*crypto.Signature)
-	for i, s := range signatures {
+	for _, s := range signatures {
+		sigs := make(map[uint16]*crypto.Signature, len(signatures))
 		sig, err := hex.DecodeString(s)
 		if err != nil {
 			return "", err
 		}
 		if len(sig) != 64 {
-			return "", fmt.Errorf("Bad sign len %d", len(sig))
+			return "", fmt.Errorf("bad sign len %d", len(sig))
 		}
 		s := crypto.Signature{}
 		copy(s[:], sig)
-		sigs[uint16(i)] = &s
+		sigs[0] = &s
+		d.SignaturesMap = append(d.SignaturesMap, sigs)
 	}
-	d.SignaturesMap = append(d.SignaturesMap, sigs)
 	return hex.EncodeToString(d.Marshal()), nil
 }
 
