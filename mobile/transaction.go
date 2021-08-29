@@ -175,9 +175,6 @@ func createTx(raw signerInput) (*common.SignedTransaction, error) {
 			return nil, fmt.Errorf("invalid output type %d", out.Type)
 		}
 
-		if out.Accounts != nil {
-			tx.AddRandomScriptOutput(out.Accounts, out.Script, out.Amount)
-		}
 		if out.Keys != nil {
 			tx.Outputs = append(tx.Outputs, &common.Output{
 				Type:   common.OutputTypeScript,
@@ -186,6 +183,9 @@ func createTx(raw signerInput) (*common.SignedTransaction, error) {
 				Script: common.NewThresholdScript(1),
 				Mask:   out.Mask,
 			})
+		}
+		if out.Accounts != nil {
+			tx.AddRandomScriptOutput(out.Accounts, out.Script, out.Amount)
 		}
 	}
 
@@ -217,20 +217,17 @@ func CreateTransaction(node string, rawStr string) (string, error) {
 	return hex.EncodeToString(tx.AsLatestVersion().PayloadMarshal()), nil
 }
 
-func CreateTransactionWithSignature(node string, rawStr string, sig string) (string, error) {
+func CreateTransactionWithSignature(node string, txRaw string, sig string) (string, error) {
 	signatures := strings.Split(sig, ",")
-	var raw signerInput
-	err := json.Unmarshal([]byte(rawStr), &raw)
+	txRawBytes, err := hex.DecodeString(txRaw)
 	if err != nil {
 		return "", err
 	}
-	raw.Node = node
-	tx, err := createTx(raw)
+	tx, err := common.UnmarshalVersionedTransaction(txRawBytes)
 	if err != nil {
 		return "", err
 	}
 
-	d := &common.VersionedTransaction{SignedTransaction: *tx}
 	for _, s := range signatures {
 		sigs := make(map[uint16]*crypto.Signature, len(signatures))
 		sig, err := hex.DecodeString(s)
@@ -243,9 +240,9 @@ func CreateTransactionWithSignature(node string, rawStr string, sig string) (str
 		s := crypto.Signature{}
 		copy(s[:], sig)
 		sigs[0] = &s
-		d.SignaturesMap = append(d.SignaturesMap, sigs)
+		tx.SignaturesMap = append(tx.SignaturesMap, sigs)
 	}
-	return hex.EncodeToString(d.Marshal()), nil
+	return hex.EncodeToString(tx.Marshal()), nil
 }
 
 func SignTransactionRaw(node string, account common.Address, rawStr string) (string, error) {
